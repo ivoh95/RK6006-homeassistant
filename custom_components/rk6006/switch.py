@@ -88,6 +88,12 @@ class RK6006ConnectionSwitch(CoordinatorEntity, SwitchEntity):
         await super().async_added_to_hass()
         # Force initial state update even if coordinator is unavailable
         self.async_write_ha_state()
+    
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        # Always update state even when coordinator fails
+        # This ensures the switch reflects the actual connection_enabled state
+        self.async_write_ha_state()
 
     @property
     def is_on(self) -> bool:
@@ -102,10 +108,12 @@ class RK6006ConnectionSwitch(CoordinatorEntity, SwitchEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Enable connection."""
         await self.coordinator.async_enable_connection()
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Disable connection."""
         await self.coordinator.async_disable_connection()
+        self.async_write_ha_state()
 
 
 class RK6006BuzzerSwitch(CoordinatorEntity, SwitchEntity):
