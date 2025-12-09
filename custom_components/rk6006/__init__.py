@@ -26,10 +26,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up RK6006 from a config entry."""
     coordinator = RK6006Coordinator(hass, entry)
     
-    try:
-        await coordinator.async_config_entry_first_refresh()
-    except Exception as err:
-        raise ConfigEntryNotReady(f"Unable to connect to RK6006: {err}") from err
+    # Only require first refresh if connection is enabled
+    # If disabled, entities will load but be unavailable until connection is enabled
+    if coordinator.connection_enabled:
+        try:
+            await coordinator.async_config_entry_first_refresh()
+        except Exception as err:
+            raise ConfigEntryNotReady(f"Unable to connect to RK6006: {err}") from err
     
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator

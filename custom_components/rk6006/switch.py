@@ -62,6 +62,9 @@ class RK6006OutputSwitch(CoordinatorEntity, SwitchEntity):
 
 class RK6006ConnectionSwitch(CoordinatorEntity, SwitchEntity):
     """Connection control switch entity."""
+    
+    # Override to prevent CoordinatorEntity from making us unavailable
+    _attr_available = True
 
     def __init__(self, coordinator: RK6006Coordinator) -> None:
         """Initialize the switch."""
@@ -79,6 +82,12 @@ class RK6006ConnectionSwitch(CoordinatorEntity, SwitchEntity):
     def available(self) -> bool:
         """Return True - connection switch is always available."""
         return True
+    
+    async def async_added_to_hass(self) -> None:
+        """When entity is added to hass."""
+        await super().async_added_to_hass()
+        # Force initial state update even if coordinator is unavailable
+        self.async_write_ha_state()
 
     @property
     def is_on(self) -> bool:
