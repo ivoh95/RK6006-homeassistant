@@ -140,13 +140,15 @@ class RK6006:
             List of discovered devices
         """
         print(f"Scanning for Bluetooth devices for {timeout} seconds...")
-        devices = await BleakScanner.discover(timeout=timeout)
+        devices = await BleakScanner.discover(timeout=timeout, return_adv=True)
         
+        SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb"
         rk_devices = []
-        for device in devices:
-            if device.name and "RK" in device.name.upper():
+        for device, adv_data in devices.values():
+            # Match by service UUID or by name if available
+            if SERVICE_UUID in adv_data.service_uuids or (device.name and "RK" in device.name.upper()):
                 rk_devices.append(device)
-                print(f"Found: {device.name} ({device.address})")
+                print(f"Found: {device.name or 'RK6006'} ({device.address})")
         
         return rk_devices
     
@@ -155,29 +157,32 @@ class RK6006:
         if not self.ble_device:
             # Need to scan for the device first
             print(f"Scanning for Bluetooth devices for {timeout} seconds...")
-            devices = await BleakScanner.discover(timeout=timeout, return_adv=False)
+            devices = await BleakScanner.discover(timeout=timeout, return_adv=True)
             
-            # Filter for RK6006 devices
-            rk_devices = [
-                d for d in devices 
-                if d.name and d.name.startswith('RK6006')
-            ]
+            # Filter for devices with the RK6006 service UUID or match by address
+            SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb"
             
-            if not rk_devices:
-                raise Exception("No RK6006 devices found")
+            target_device = None
+            for device, adv_data in devices.values():
+                # Match by address (preferred) or by service UUID
+                if self.device_address:
+                    if device.address == self.device_address:
+                        target_device = device
+                        break
+                elif SERVICE_UUID in adv_data.service_uuids:
+                    target_device = device
+                    if not self.device_address:
+                        self.device_address = device.address
+                    break
             
-            # Use the first device found or match by address
-            if self.device_address:
-                matching = [d for d in rk_devices if d.address == self.device_address]
-                if matching:
-                    self.ble_device = matching[0]
-                else:
+            if not target_device:
+                if self.device_address:
                     raise Exception(f"RK6006 device with address {self.device_address} not found")
-            else:
-                self.ble_device = rk_devices[0]
-                self.device_address = self.ble_device.address
+                else:
+                    raise Exception("No RK6006 devices found")
             
-            print(f"Using device: {self.ble_device.name} ({self.device_address})")
+            self.ble_device = target_device
+            print(f"Using device: {self.ble_device.name or 'RK6006'} ({self.device_address})")
         
         print(f"Connecting to {self.device_address}...")
         self.client = await establish_connection(
