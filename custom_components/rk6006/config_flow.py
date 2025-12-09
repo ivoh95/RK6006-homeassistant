@@ -78,11 +78,10 @@ class RK6006ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         current_addresses = self._async_current_ids()
         for discovery_info in async_discovered_service_info(self.hass):
-            if (
-                discovery_info.address in current_addresses
-                or not discovery_info.name
-                or "RK" not in discovery_info.name.upper()
-            ):
+            if discovery_info.address in current_addresses:
+                continue
+            # Match by service UUID since RK6006 doesn't always advertise a name
+            if "0000ffe0-0000-1000-8000-00805f9b34fb" not in discovery_info.service_uuids:
                 continue
             self._discovered_devices[discovery_info.address] = discovery_info
 
@@ -95,7 +94,7 @@ class RK6006ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(CONF_ADDRESS): vol.In(
                         {
-                            address: f"{info.name} ({address})"
+                            address: f"{info.name or 'RK6006'} ({address})"
                             for address, info in self._discovered_devices.items()
                         }
                     ),
